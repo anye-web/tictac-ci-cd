@@ -1,12 +1,8 @@
 ## Github Actions CI/Cd pipelines
 
----
-
 This Directory contains the github workflow for the tictac application Ci/Cd
 
 ## Pipeline Stages
-
----
 
 The CI/Cd Pipeline consist of the following stage
 
@@ -26,8 +22,6 @@ The CI/Cd Pipeline consist of the following stage
         The deployment file in the helm chat is update with the latest image
 
 ## How the kubernetes Deployment update works
-
----
 
 1. Runs only on push to the main branch
 2. Uses a shell script to update the reference image tag in the k8s deployment file
