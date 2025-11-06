@@ -1,0 +1,120 @@
+name: CI PIPELINE FOR TICTAC APP
+
+on:
+    push:
+        branches:
+            - main
+        paths-ignore:
+            - "helm/**"
+            - "README.md"
+            - "terraform/**"
+            - "terraform-backend/**"
+    pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - "helm/**"
+            - "README.md"
+            - "terraform/**"
+            - "terraform-backend/**"
+jobs:
+    Test:
+        name: Unit testing
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node Js
+              uses: actions/setup-node@v4
+              with:
+                  version: "20"
+                  cache: "npm"
+
+            - name: Install dependencies
+              uses: npm ci
+
+            - name: Run Tests
+              uses: npm test
+
+    Lint:
+        name: Static Code Analysis
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Step up Node Js
+              uses: actions/setup-node@v4
+              with:
+                  version: "20"
+                  cache: "npm"
+
+            - name: Install Dependencies
+              uses: npm ci
+
+            - name: Run EsLint
+              uses: npm run lint
+
+    Build:
+        name: Build Artifacts
+        runs-on: ubuntu-latest
+        needs: [Test, Lint]
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Nodejs
+              uses: actions/setup-node@v4
+              with:
+                  version: "20"
+                  cache: "npm"
+
+            - name: Install Dependencies
+              uses: npm ci
+
+            - name: Build project
+              uses: npm run build
+
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifact
+                  path: dist/
+
+    Docker-build-and-push:
+        name: Docker Build and push to Aws Ecr
+        runs-on: ubuntu-latest
+        needs: [Build]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Download Artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: build-artifact
+                  path: dist/
+
+            - name: Configure Aws Credential
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Login into Ecr
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build, tag and Push to Ecr
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  IMAGE_TAG: ${{ github.run_id }}
+              run: |
+                  docker build -t $ECR_REGISTRY/${{ secrets.AWS_ECR_REPO }}:$IMAGE_TAG .
+                  docker push $ECR_REGISTRY/${{ secrets.AWS_ECR_REPO }}:$IMAGE_TAG
