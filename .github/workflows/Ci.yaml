@@ -33,10 +33,10 @@ jobs:
                   cache: "npm"
 
             - name: Install dependencies
-              uses: npm ci
+              run: npm ci
 
             - name: Run Tests
-              uses: npm test
+              run: npm test
 
     Lint:
         name: Static Code Analysis
@@ -53,10 +53,10 @@ jobs:
                   cache: "npm"
 
             - name: Install Dependencies
-              uses: npm ci
+              run: npm ci
 
             - name: Run EsLint
-              uses: npm run lint
+              run: npm run lint
 
     Build:
         name: Build Artifacts
@@ -74,10 +74,10 @@ jobs:
                   cache: "npm"
 
             - name: Install Dependencies
-              uses: npm ci
+              run: npm ci
 
             - name: Build project
-              uses: npm run build
+              run: npm run build
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
