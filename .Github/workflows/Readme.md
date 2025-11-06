@@ -8,7 +8,7 @@ This Directory contains the github workflow for the tictac application Ci/Cd
 
 ---
 
-The CI/Cd Pipeline consist of the following stages
+The CI/Cd Pipeline consist of the following stage
 
 1.  # Unit Testing.
         This Stage runs the unit test using Vitest
