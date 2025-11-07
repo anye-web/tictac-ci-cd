@@ -149,7 +149,7 @@ jobs:
 
       - name: Update Helm Charts
         run: |
-          sed -i "s/^ *tag: .*/  tag: \"${{ github.run_id }}\"/" helm/tictac-chart/values.yaml
+          sed -i 's/tag: .*/tag: "${{ github.run_id }}"/' helm/tictac-chart/values.yaml
 
       - name: commit and Push
         run: |
