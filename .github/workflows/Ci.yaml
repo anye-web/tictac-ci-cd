@@ -1,130 +1,159 @@
 name: CI PIPELINE FOR TICTAC APP
 
 on:
-    push:
-        branches:
-            - main
-        paths-ignore:
-            - "helm/**"
-            - "README.md"
-            - "terraform/**"
-            - "terraform-backend/**"
-    pull_request:
-        branches:
-            - main
-        paths-ignore:
-            - "helm/**"
-            - "README.md"
-            - "terraform/**"
-            - "terraform-backend/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "helm/**"
+      - "README.md"
+      - "terraform/**"
+      - "terraform-backend/**"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "helm/**"
+      - "README.md"
+      - "terraform/**"
+      - "terraform-backend/**"
 jobs:
-    Test:
-        name: Unit testing
-        runs-on: ubuntu-latest
+  Test:
+    name: Unit testing
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup Node Js
-              uses: actions/setup-node@v4
-              with:
-                  version: "20"
-                  cache: "npm"
+      - name: Setup Node Js
+        uses: actions/setup-node@v4
+        with:
+          version: "20"
+          cache: "npm"
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Run Tests
-              run: npm test
+      - name: Run Tests
+        run: npm test
 
-    Lint:
-        name: Static Code Analysis
-        runs-on: ubuntu-latest
+  Lint:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Step up Node Js
-              uses: actions/setup-node@v4
-              with:
-                  version: "20"
-                  cache: "npm"
+      - name: Step up Node Js
+        uses: actions/setup-node@v4
+        with:
+          version: "20"
+          cache: "npm"
 
-            - name: Install Dependencies
-              run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-            - name: Run EsLint
-              run: npm run lint
+      - name: Run EsLint
+        run: npm run lint
 
-    Build:
-        name: Build Artifacts
-        runs-on: ubuntu-latest
-        needs: [Test, Lint]
+  Build:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    needs: [Test, Lint]
 
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Setup Nodejs
-              uses: actions/setup-node@v4
-              with:
-                  version: "20"
-                  cache: "npm"
+      - name: Setup Nodejs
+        uses: actions/setup-node@v4
+        with:
+          version: "20"
+          cache: "npm"
 
-            - name: Install Dependencies
-              run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-            - name: Build project
-              run: npm run build
+      - name: Build project
+        run: npm run build
 
-            - name: Upload Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: build-artifact
-                  path: dist/
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: dist/
 
-    Docker-build-and-push:
-        name: Docker Build and push to Aws Ecr
-        runs-on: ubuntu-latest
-        needs: [Build]
+  Docker-build-and-push:
+    name: Docker Build and push to Aws Ecr
+    runs-on: ubuntu-latest
+    needs: [Build]
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Download Artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: build-artifact
-                  path: dist/
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact
+          path: dist/
 
-            - name: Configure Aws Credential
-              uses: aws-actions/configure-aws-credentials@v4
-              with:
-                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: ${{ secrets.AWS_REGION }}
+      - name: Configure Aws Credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-            - name: Login into Ecr
-              id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v2
+      - name: Login into Ecr
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-            - name: Build and tag docker image
-              run: |
-                  docker build -t ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }} .
+      - name: Build and tag docker image
+        run: |
+          docker build -t ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }} .
 
-            - name: Scan Docker image for Vulnerabilities using Trivy
-              uses: aquasecurity/trivy-action@0.28.0
-              with:
-                  image-ref: ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }}
-                  format: "table"
-                  exit-code: "1"
-                  ignore-unfixed: true
-                  vuln-type: "os,library"
-                  severity: "CRITICAL,HIGH"
+      - name: Scan Docker image for Vulnerabilities using Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }}
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
 
-            - name: Push Scan docker image to Ecr
-              run: |
-                  docker push ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }}
+      - name: Push Scan docker image to Ecr
+        run: |
+          docker push ${{ secrets.AWS_ECR_REPO }}:${{ github.run_id }}
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: trivy-scan-results.txt
+
+  Update-helm-chat:
+    name: Update helm chat with new image.
+    runs-on: ubuntu-latest
+    needs: [Docker-build-and-push]
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN }}
+
+      - name: Update Helm Charts
+        run: |
+          sed -i 's/tag: .*/tag: "${{ github.run_id }}"/' helm/tictac-chart/values.yaml
+
+      - name: commit and Push
+        run: |
+          git config user.email "${{ secrets.EMAIL }}"
+          git config user.name "${{ secrets.USER_NAME }}"
+          git add .
+          git commit -m "Update tag in helm Chart"
+          git push
